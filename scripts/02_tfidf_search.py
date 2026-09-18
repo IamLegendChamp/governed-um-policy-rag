@@ -2,7 +2,7 @@
 P01 Phase 1: search chunks with TF-IDF (keyword retrieval).
 
 Run from AgentForge root:
-    python project_track/p01_rag_foundation/scripts/02_tfidf_search.py "What is step therapy?"
+    python scripts/02_tfidf_search.py "What is step therapy?"
 """
 
 from __future__ import annotations

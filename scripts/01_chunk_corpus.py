@@ -1,7 +1,7 @@
 """
 P01 Phase 0: turn corpus .txt files into chunks (chunks.jsonl)
 Run from AgentForge root:
-    python project_track/p01_rag_foundation/scripts/01_chunk_corpus.py
+    python scripts/01_chunk_corpus.py
 """
 
 from __future__ import annotations
