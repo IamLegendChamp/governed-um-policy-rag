@@ -1,0 +1,15 @@
+Utilization Management Policy Excerpt (Synthetic Training Corpus)
+-----------------------------------------------------------------
+This document is fictional text for portfolio engineering only. It mimics the shape of internal health-plan policy libraries: benefits, formulary, and utilization management (UM).
+
+Prior authorization is required for selected specialty medications when medical necessity criteria are not met on the first submission. The criteria reference diagnosis codes, step therapy history, and documented failure or contraindication to preferred agents.
+
+Step therapy requires trial of formulary-preferred alternatives for a defined period unless an exception applies. Exceptions include documented allergy, pregnancy planning per clinical guideline, or hospice enrollment. Exception requests must include prescriber attestation and relevant chart excerpts.
+
+Formulary tiers affect member cost share. Tier 1 generic drugs have the lowest copay. Tier 3 non-preferred brands may require prior authorization and may not be covered without approved medical exception.
+
+Appeals and grievances: members may appeal medical necessity denials within 60 calendar days of the adverse determination. Expedited appeals apply when the standard timeframe could seriously jeopardize life or health. All appeal decisions must cite the policy section applied and the evidence reviewed.
+
+Audit and retrieval: internal staff must use the governed knowledge base for policy interpretation. Answers shown to members or providers must include document identifier and effective date. Retrieval logs must record query text, user role, and chunk identifiers returned.
+
+Metadata for production systems often includes tenant region, line of business (commercial, Medicare Advantage, Medicaid), and classification internal-only versus provider-facing. Filters must be applied before retrieval when the user role is not authorized for restricted appendices.
