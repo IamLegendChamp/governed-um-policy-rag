@@ -1,11 +1,9 @@
-# P01 golden set — LLM-as-a-Judge + optional chunk_id assertions (synthetic UM)
-# Used in phase 6: tests/p01/test_judge_eval.py
-
+# Recruiter / CI golden set — health UM only (LLM-as-a-Judge phase)
 version: "1.0"
 cases:
   - id: UM-001
     question: "What is step therapy?"
-    must_include_chunk_ids: []  # fill after you know retrieval ids, e.g. C0009
+    must_include_chunk_ids: []
     must_include_doc_types: ["um_policy"]
     rubric: "Answer must describe trial of preferred drugs before exceptions; no clinical diagnosis."
 
@@ -15,6 +13,6 @@ cases:
     rubric: "Must mention 60 calendar days for standard appeals; may mention expedited appeals."
 
   - id: UM-003
-    question: "What is hybrid RAG?"
-    must_include_doc_types: ["engineering_reference"]
-    rubric: "Should describe keyword + vector retrieval; ok to refuse if only UM chunks retrieved."
+    question: "When is prior authorization required for specialty medications?"
+    must_include_doc_types: ["um_policy"]
+    rubric: "Must tie prior authorization to medical necessity / specialty meds; no invented clinical advice."

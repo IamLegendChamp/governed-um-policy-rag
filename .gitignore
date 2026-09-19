@@ -11,4 +11,5 @@ data/chunks/
 # Local learning only — not for recruiter GitHub surface
 data/corpus_dev/
 config/demo_queries.dev.yaml
+data/evals/golden_um_qa.dev.yaml
 LOCAL_DEV.md
