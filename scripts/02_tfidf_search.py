@@ -1,24 +1,27 @@
 """
-P01 Phase 1: search chunks with TF-IDF (keyword retrieval).
+Lexical retrieval CLI over the chunk catalog (keyword leg of hybrid RAG).
 
-Run from AgentForge root:
-    python scripts/02_tfidf_search.py "What is step therapy?"
+Examples:
+    python scripts/02_tfidf_search.py --query "What is step therapy?"
+    python scripts/02_tfidf_search.py --demo
+    python scripts/02_tfidf_search.py --query "prior authorization" --top-k 5
 """
 
 from __future__ import annotations
+
+import argparse
 import json
-import sys
 from pathlib import Path
+
+import yaml
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import linear_kernel
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 CHUNKS_PATH = PROJECT_DIR / "data" / "chunks" / "chunks.jsonl"
+DEMO_QUERIES_PATH = PROJECT_DIR / "config" / "demo_queries.yaml"
+DEFAULT_TOP_K = 3
 
-TOP_K = 3
-
-# print("chunks file exists:", CHUNKS_PATH.exists())
-# print("TOP_K =", TOP_K)
 
 def load_chunks(path: Path) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
@@ -27,15 +30,11 @@ def load_chunks(path: Path) -> list[dict[str, str]]:
             rows.append(json.loads(line))
     return rows
 
-# chunks = load_chunks(CHUNKS_PATH)
-# print("loaded", len(chunks), "chunks")
-# print("first id:", chunks[0]["chunk_id"])
-# print("first text preview:", chunks[0]["text"][:80])
 
 def retrieve(
     query: str,
     chunks: list[dict[str, str]],
-    top_k: int = TOP_K,
+    top_k: int = DEFAULT_TOP_K,
 ) -> list[tuple[float, dict[str, str]]]:
     texts = [row["text"] for row in chunks]
     vectorizer = TfidfVectorizer(stop_words="english")
@@ -45,32 +44,87 @@ def retrieve(
     ranked_indices = scores.argsort()[::-1][:top_k]
     return [(float(scores[i]), chunks[i]) for i in ranked_indices]
 
-# chunks = load_chunks(CHUNKS_PATH)
-# hits = retrieve("What is step therapy?", chunks, top_k=3)
-# for score, row in hits:
-#     print(score, row["chunk_id"], row["text"])
 
-def main() -> None:
-    if len(sys.argv) < 2:
-        raise SystemExit('Usage: python 02_tfidf_search.py "your question here"')
-    query = sys.argv[1]
-    print("=== P01 Phase 1: TF-IDF search ===")
-    print(f"Query: {query}")
+def load_demo_queries(path: Path) -> list[dict[str, str]]:
+    with path.open(encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+    return list(cfg["queries"])
+
+
+def print_hits(query: str, hits: list[tuple[float, dict[str, str]]], top_k: int) -> None:
+    print("=== governed-um-policy-rag · lexical retrieval ===")
+    print(f"query: {query}")
+    print(f"top_k: {top_k}")
     print()
-    if not CHUNKS_PATH.exists():
-        raise SystemExit(f"Missing {CHUNKS_PATH}. Run 01_chunk_corpus.py first.")
-    chunks = load_chunks(CHUNKS_PATH)
-    hits = retrieve(query, chunks, top_k=TOP_K)
-    print(f"Top {TOP_K} chunks:")
+    shown = 0
     for rank, (score, row) in enumerate(hits, start=1):
-        if(score <= 0):
+        if score <= 0:
             continue
+        shown += 1
         preview = row["text"][:120] + ("..." if len(row["text"]) > 120 else "")
-        print(f"{rank}. score={score:.3f}  id={row['chunk_id']}  source={row['source']}")
+        print(
+            f"{rank}. score={score:.3f}  chunk_id={row['chunk_id']}  "
+            f"source={row['source']}  doc_type={row.get('doc_type', '?')}"
+        )
         print(f"   {preview}")
         print()
-    print("This is the RETRIEVE step of RAG. Later we GENERATE an answer from these chunks.")
+    if shown == 0:
+        print("No positive-score hits.")
+    print("retrieval_complete")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="Rank policy chunks for a query (lexical / TF-IDF baseline)."
+    )
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument(
+        "--query",
+        "-q",
+        type=str,
+        help="Natural-language retrieval query.",
+    )
+    group.add_argument(
+        "--demo",
+        action="store_true",
+        help=f"Run smoke queries from {DEMO_QUERIES_PATH.relative_to(PROJECT_DIR)}.",
+    )
+    parser.add_argument(
+        "--top-k",
+        type=int,
+        default=DEFAULT_TOP_K,
+        help=f"Number of ranked chunks to return (default: {DEFAULT_TOP_K}).",
+    )
+    parser.add_argument(
+        "--chunks",
+        type=Path,
+        default=CHUNKS_PATH,
+        help="Path to chunks.jsonl catalog.",
+    )
+    return parser
+
+
+def main() -> None:
+    args = build_parser().parse_args()
+
+    if not args.chunks.exists():
+        raise SystemExit(
+            f"Missing chunk catalog: {args.chunks}. Run: python scripts/01_chunk_corpus.py"
+        )
+
+    chunks = load_chunks(args.chunks)
+
+    if args.demo:
+        for item in load_demo_queries(DEMO_QUERIES_PATH):
+            print(f"--- demo_id={item['id']} ---")
+            hits = retrieve(item["text"], chunks, top_k=args.top_k)
+            print_hits(item["text"], hits, args.top_k)
+            print()
+        return
+
+    hits = retrieve(args.query, chunks, top_k=args.top_k)
+    print_hits(args.query, hits, args.top_k)
+
 
 if __name__ == "__main__":
     main()
-    

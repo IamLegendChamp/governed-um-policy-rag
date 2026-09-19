@@ -1,0 +1,6 @@
+# Operator demo queries (lexical retrieval smoke checks)
+queries:
+  - id: UM-step-therapy
+    text: "What is step therapy?"
+  - id: ENG-hybrid-rag
+    text: "What is hybrid RAG?"

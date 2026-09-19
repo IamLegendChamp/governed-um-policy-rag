@@ -45,14 +45,18 @@ python -m venv .venv
 # Windows Git Bash: source .venv/Scripts/activate
 pip install -r requirements.txt
 
-# Required once (or after corpus / chunk settings change)
+# Build chunk catalog (required once, or after corpus / chunk settings change)
 python scripts/01_chunk_corpus.py
 
-python scripts/02_tfidf_search.py "What is step therapy?"
-python scripts/02_tfidf_search.py "What is hybrid RAG?"
+# Lexical retrieval (named flags — operator CLI)
+python scripts/02_tfidf_search.py --query "What is step therapy?"
+python scripts/02_tfidf_search.py --query "What is hybrid RAG?" --top-k 5
+
+# Smoke suite from config/demo_queries.yaml
+python scripts/02_tfidf_search.py --demo
 ```
 
-Fresh clone: there is **no** committed `data/chunks/` (generated artifact). Always run `01_chunk_corpus.py` before search.
+Fresh clone: `data/chunks/` is not committed. Always run `01_chunk_corpus.py` before retrieval.
 
 Secrets for later phases: copy `.env.example` → `.env` (never commit `.env`).
 
