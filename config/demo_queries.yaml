@@ -1,4 +1,4 @@
-# Recruiter / professional smoke queries — health UM only
+# Operator smoke queries — utilization management policy
 queries:
   - id: UM-step-therapy
     text: "What is step therapy?"

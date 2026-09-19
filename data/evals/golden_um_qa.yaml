@@ -1,4 +1,4 @@
-# Recruiter / CI golden set — health UM only (LLM-as-a-Judge phase)
+# Golden Q&A for LLM-as-a-Judge / CI (synthetic UM policy)
 version: "1.0"
 cases:
   - id: UM-001

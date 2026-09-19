@@ -1,10 +1,8 @@
 """
-Lexical retrieval CLI over the chunk catalog (keyword leg of hybrid RAG).
+Lexical retrieval CLI over the policy chunk catalog (keyword leg of hybrid RAG).
 
-Examples:
     python scripts/02_tfidf_search.py --query "What is step therapy?"
     python scripts/02_tfidf_search.py --demo
-    python scripts/02_tfidf_search.py --demo-dev
     python scripts/02_tfidf_search.py --query "prior authorization" --top-k 5
 """
 
@@ -21,7 +19,6 @@ from sklearn.metrics.pairwise import linear_kernel
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 CHUNKS_PATH = PROJECT_DIR / "data" / "chunks" / "chunks.jsonl"
 DEMO_QUERIES_PATH = PROJECT_DIR / "config" / "demo_queries.yaml"
-DEMO_QUERIES_DEV_PATH = PROJECT_DIR / "config" / "demo_queries.dev.yaml"
 DEFAULT_TOP_K = 3
 
 
@@ -89,12 +86,7 @@ def build_parser() -> argparse.ArgumentParser:
     group.add_argument(
         "--demo",
         action="store_true",
-        help=f"Run professional UM smoke queries from {DEMO_QUERIES_PATH.relative_to(PROJECT_DIR)}.",
-    )
-    group.add_argument(
-        "--demo-dev",
-        action="store_true",
-        help="Run local learning queries (config/demo_queries.dev.yaml; gitignored).",
+        help=f"Run smoke queries from {DEMO_QUERIES_PATH.relative_to(PROJECT_DIR)}.",
     )
     parser.add_argument(
         "--top-k",
@@ -121,11 +113,8 @@ def main() -> None:
 
     chunks = load_chunks(args.chunks)
 
-    if args.demo or args.demo_dev:
-        demo_path = DEMO_QUERIES_DEV_PATH if args.demo_dev else DEMO_QUERIES_PATH
-        if not demo_path.exists():
-            raise SystemExit(f"Missing demo config: {demo_path}")
-        for item in load_demo_queries(demo_path):
+    if args.demo:
+        for item in load_demo_queries(DEMO_QUERIES_PATH):
             print(f"--- demo_id={item['id']} ---")
             hits = retrieve(item["text"], chunks, top_k=args.top_k)
             print_hits(item["text"], hits, args.top_k)
