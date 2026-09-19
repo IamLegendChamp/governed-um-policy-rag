@@ -30,7 +30,7 @@ Corpus (.txt)
 
 ## Implemented
 
-- [x] Synthetic UM + reference corpus → chunk catalog with metadata  
+- [x] Synthetic UM policy corpus → chunk catalog with metadata  
 - [x] Stable `chunk_id`s for citation / audit  
 - [x] Ranked retrieval CLI (lexical baseline)  
 - [ ] Pinecone upsert + hybrid fusion  
@@ -48,11 +48,11 @@ pip install -r requirements.txt
 # Build chunk catalog (required once, or after corpus / chunk settings change)
 python scripts/01_chunk_corpus.py
 
-# Lexical retrieval (named flags — operator CLI)
+# Lexical retrieval (operator CLI)
 python scripts/02_tfidf_search.py --query "What is step therapy?"
-python scripts/02_tfidf_search.py --query "What is hybrid RAG?" --top-k 5
+python scripts/02_tfidf_search.py --query "When is prior authorization required?" --top-k 5
 
-# Smoke suite from config/demo_queries.yaml
+# UM smoke suite (config/demo_queries.yaml)
 python scripts/02_tfidf_search.py --demo
 ```
 

@@ -1,6 +1,8 @@
-# Operator demo queries (lexical retrieval smoke checks)
+# Recruiter / professional smoke queries — health UM only
 queries:
   - id: UM-step-therapy
     text: "What is step therapy?"
-  - id: ENG-hybrid-rag
-    text: "What is hybrid RAG?"
+  - id: UM-prior-authorization
+    text: "When is prior authorization required for specialty medications?"
+  - id: UM-appeal-window
+    text: "How long do members have to appeal a medical necessity denial?"
