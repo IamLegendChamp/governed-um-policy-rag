@@ -1,53 +1,71 @@
 # governed-um-policy-rag
 
-Governed retrieval over **utilization management (UM) / benefits-style policy** text: chunked corpus with provenance metadata, keyword retrieval baseline, and a path to hybrid vector search with citation-ready `chunk_id`s.
+Internal **policy knowledge retrieval** for utilization management (UM) / benefits-style corpora: provenance on every chunk, ranked evidence with stable `chunk_id`s, and a roadmap to hybrid search, grounded generation, and eval gates.
 
-Built for **enterprise knowledge retrieval** patterns (audit-oriented metadata, reproducible chunking, ranked evidence)—not a chat demo.
+Designed as an **enterprise retrieval slice** (audit-ready metadata, reproducible ingest, citation hooks)—not a chatbot wrapper.
 
-## Stack
+## Architecture (target)
 
-| Layer | Choice |
-|-------|--------|
-| Keyword retrieval | TF-IDF (scikit-learn) |
-| Vector memory (next) | Pinecone |
-| Generation / embeddings (next) | Azure AI Foundry |
-| Indexing framework (next) | LlamaIndex |
-| RAG chain / evals (next) | LangChain · LLM-as-a-Judge |
+```text
+Corpus (.txt)
+    -> chunk + metadata (source, classification, doc_type, chunk_id)
+    -> keyword retriever  (baseline / hybrid leg)     [shipped]
+    -> dense index        (Pinecone + Azure embeddings) [next]
+    -> hybrid merge
+    -> grounded answer    (Azure AI Foundry + citations)
+    -> audit log + LLM-as-a-Judge CI
+```
 
-## What’s implemented
+| Layer | Status | Technology |
+|-------|--------|------------|
+| Ingest / provenance | Done | Fixed-window chunking → JSONL catalog |
+| Keyword leg | Done | TF-IDF (control baseline for hybrid) |
+| Vector memory | Planned | Pinecone |
+| Embeddings + generation | Planned | Azure AI Foundry |
+| Indexing orchestration | Planned | LlamaIndex |
+| Answer chain + judge | Planned | LangChain · LLM-as-a-Judge |
+| Corrective loop | Planned | LangGraph (optional) |
 
-- [x] Ingest synthetic UM + reference corpus → `data/chunks/chunks.jsonl`
-- [x] Metadata on every chunk: `industry`, `classification`, `doc_type`, `source`, `chunk_id`
-- [x] TF-IDF top-k retrieval CLI
-- [ ] Pinecone upsert + hybrid merge
-- [ ] Azure Foundry grounded answers with citations
-- [ ] Retrieval audit log + metadata filters
-- [ ] Golden Q&A + LLM-as-a-Judge gate
+**Why a keyword leg first:** production hybrid RAG keeps a lexical path (codes, exact policy phrases) beside vectors. TF-IDF here is that **control surface**, not the end state.
 
-## Quick start
+## Implemented
+
+- [x] Synthetic UM + reference corpus → chunk catalog with metadata  
+- [x] Stable `chunk_id`s for citation / audit  
+- [x] Ranked retrieval CLI (lexical baseline)  
+- [ ] Pinecone upsert + hybrid fusion  
+- [ ] Azure Foundry answers with mandatory citations  
+- [ ] Retrieval audit JSONL + metadata filters  
+- [ ] Golden Q&A + judge threshold in CI  
+
+## Run locally
 
 ```bash
 python -m venv .venv
 # Windows Git Bash: source .venv/Scripts/activate
 pip install -r requirements.txt
 
+# Required once (or after corpus / chunk settings change)
 python scripts/01_chunk_corpus.py
+
 python scripts/02_tfidf_search.py "What is step therapy?"
 python scripts/02_tfidf_search.py "What is hybrid RAG?"
 ```
 
-Copy `.env.example` → `.env` before Azure / Pinecone phases. **Never commit `.env`.**
+Fresh clone: there is **no** committed `data/chunks/` (generated artifact). Always run `01_chunk_corpus.py` before search.
 
-## Corpus
+Secrets for later phases: copy `.env.example` → `.env` (never commit `.env`).
 
-Synthetic training text only (`data/corpus/`). No live payer or PHI data.
+## Data
+
+Synthetic policy text under `data/corpus/` only. No live payer data or PHI.
 
 ## Non-goals
 
-- Not clinical decision support or diagnosis  
-- Not a claim of HIPAA / SOC2 certification—governance **patterns** (ids, metadata, audit hooks)  
-- Not open-web crawling  
+- Not clinical decision support  
+- Not HIPAA/SOC2 certification claims—governance **patterns** only  
+- Not open-web RAG  
 
 ## License
 
-Use freely for portfolio / interview demos; replace corpus with your licensed content for production.
+Portfolio / interview use; swap in licensed corpora for production.
