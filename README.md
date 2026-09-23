@@ -1,40 +1,52 @@
 # governed-um-policy-rag
 
-Internal **policy knowledge retrieval** for utilization management (UM) / benefits-style corpora: provenance on every chunk, ranked evidence with stable `chunk_id`s, and a roadmap to hybrid search, grounded generation, and eval gates.
+Policy knowledge retrieval for utilization management (UM) / benefits-style corpora: provenance on every chunk, ranked evidence with stable `chunk_id`s, and a path to hybrid search, grounded generation, and eval gates.
 
-Designed as an **enterprise retrieval slice** (audit-ready metadata, reproducible ingest, citation hooks)—not a chatbot wrapper.
+This is a small **enterprise retrieval slice**—audit-ready metadata, reproducible ingest, citation hooks—not a chatbot wrapper.
 
-## Architecture (target)
+**Interface:** Python scripts / CLIs (no HTTP API in this repo).
+
+## Stack
+
+| Layer | Choice | Role |
+|-------|--------|------|
+| Corpus | Synthetic UM policy `.txt` | Safe public sample (no PHI) |
+| Chunk catalog | JSONL + metadata | Stable `chunk_id` for citations |
+| Keyword retrieval | TF-IDF (scikit-learn) | Lexical baseline / hybrid leg |
+| Embeddings | **Azure OpenAI** (`text-embedding-3-small`) | Dense representations |
+| Vector index | **Pinecone** | Upsert by `chunk_id` + similarity query |
+| Next | Hybrid merge → grounded answers | TF-IDF + Pinecone, then Azure chat + evals |
+
+Secrets stay in `.env` (see `.env.example`). Never commit keys.
+
+## Architecture
 
 ```text
 Corpus (.txt)
     -> chunk + metadata (source, classification, doc_type, chunk_id)
-    -> keyword retriever  (baseline / hybrid leg)     [shipped]
-    -> dense index        (Pinecone + Azure embeddings) [next]
-    -> hybrid merge
-    -> grounded answer    (Azure AI Foundry + citations)
+    -> keyword retriever  (TF-IDF)                 [shipped]
+    -> dense index        (Azure embed -> Pinecone) [shipped]
+    -> hybrid merge                                 [next]
+    -> grounded answer    (Azure chat + citations)
     -> audit log + LLM-as-a-Judge CI
 ```
 
-| Layer | Status | Technology |
-|-------|--------|------------|
-| Ingest / provenance | Done | Fixed-window chunking → JSONL catalog |
-| Keyword leg | Done | TF-IDF (control baseline for hybrid) |
-| Vector memory | Planned | Pinecone |
-| Embeddings + generation | Planned | Azure AI Foundry |
-| Indexing orchestration | Planned | LlamaIndex |
-| Answer chain + judge | Planned | LangChain · LLM-as-a-Judge |
-| Corrective loop | Planned | LangGraph (optional) |
-
-**Why a keyword leg first:** production hybrid RAG keeps a lexical path (codes, exact policy phrases) beside vectors. TF-IDF here is that **control surface**, not the end state.
+| Stage | Status |
+|-------|--------|
+| Ingest / provenance | Done |
+| Keyword leg (TF-IDF) | Done |
+| Azure embeddings + Pinecone upsert/query | Done |
+| Hybrid fusion | Next |
+| Grounded generation + judge CI | Planned |
 
 ## Implemented
 
 - [x] Synthetic UM policy corpus → chunk catalog with metadata  
 - [x] Stable `chunk_id`s for citation / audit  
-- [x] Ranked retrieval CLI (lexical baseline)  
-- [ ] Pinecone upsert + hybrid fusion  
-- [ ] Azure Foundry answers with mandatory citations  
+- [x] Ranked lexical retrieval CLI  
+- [x] Azure embeddings → Pinecone upsert + smoke query  
+- [ ] Hybrid fusion (TF-IDF + Pinecone)  
+- [ ] Azure answers with mandatory citations  
 - [ ] Retrieval audit JSONL + metadata filters  
 - [ ] Golden Q&A + judge threshold in CI  
 
@@ -44,21 +56,19 @@ Corpus (.txt)
 python -m venv .venv
 # Windows Git Bash: source .venv/Scripts/activate
 pip install -r requirements.txt
+cp .env.example .env   # fill Azure + Pinecone values
 
-# Build chunk catalog (required once, or after corpus / chunk settings change)
 python scripts/01_chunk_corpus.py
-
-# Lexical retrieval (operator CLI)
 python scripts/02_tfidf_search.py --query "What is step therapy?"
-python scripts/02_tfidf_search.py --query "When is prior authorization required?" --top-k 5
-
-# UM smoke suite (config/demo_queries.yaml)
-python scripts/02_tfidf_search.py --demo
+python scripts/03_pinecone_upsert.py
 ```
 
-Fresh clone: `data/chunks/` is not committed. Always run `01_chunk_corpus.py` before retrieval.
+`03` embeds all chunks, upserts to Pinecone, then queries `"What is step therapy?"` and prints top `chunk_id`s.
 
-Secrets for later phases: copy `.env.example` → `.env` (never commit `.env`).
+Fresh clone: `data/chunks/` is not committed—run `01` before retrieval.
+
+Setup notes: [docs/SETUP_AZURE.md](./docs/SETUP_AZURE.md) · [docs/SETUP_PINECONE.md](./docs/SETUP_PINECONE.md) · [docs/VERIFY_AZURE_PINECONE.md](./docs/VERIFY_AZURE_PINECONE.md)  
+When to commit: [docs/COMMIT_AND_PUSH.md](./docs/COMMIT_AND_PUSH.md)
 
 ## Data
 
