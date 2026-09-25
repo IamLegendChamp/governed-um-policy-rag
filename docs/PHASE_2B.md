@@ -1,33 +1,35 @@
-# P01 Phase 2b — Hybrid merge (TF-IDF + Pinecone)
+# P01 Phase 2b — BM25 + hybrid merge (RRF) + Cohere rerank
 
-**Status:** starting — after phase 2a smoke query confirmed.
+**Status:** BM25 (2b-1) **done**. `02_tfidf_search.py` deleted. Starting 2b-2/2b-3 (`04_hybrid_search.py`).
 
 **Surface:** Python scripts only (no FastAPI).
 
-## Goal
+## In scope for P01 (required)
 
-For the same question (running example: `"What is step therapy?"`):
-
-1. Get ranked hits from **TF-IDF** (keyword leg — `02_tfidf_search.py` logic).  
-2. Get ranked hits from **Pinecone** (vector leg — already in `03`).  
-3. **Merge** into one ranked list of `chunk_id`s (simple score mix or RRF — teach simple first).
+| Step | What | Script |
+|------|------|--------|
+| **2b-1** | **BM25** keyword leg (replaced TF-IDF) | `02_bm25_search.py` ✅ done — `retrieve()`, `--query`/`--demo`/`--top-k` CLI, verified against 3 demo queries |
+| **2b-2** | Pinecone dense top_k (reuse `03` patterns) | inside `04` or helper — next |
+| **2b-3** | **RRF** merge of BM25 + Pinecone ranks | `04_hybrid_search.py` — next |
+| **2b-4** | **Cohere rerank** on fused shortlist | extend `04` or `05_rerank.py` |
 
 ```text
 Question
-  -> TF-IDF top_k
+  -> BM25 top_k
   -> Pinecone top_k
-  -> merge
-  -> final C00xx list (still no LLM answer yet — that is phase 3)
+  -> RRF merge
+  -> Cohere rerank (shortlist)
+  -> final C00xx  (phase 3: grounded answer)
 ```
 
-## Coaching depth (mandatory)
+~~TF-IDF (`02_tfidf_search.py`) stays until BM25 CLI is solid~~ — **done.** BM25 CLI matched TF-IDF's `--query`/`--demo` UX with sensible ranks (verified: `"What is step therapy?"` → C0001/C0002/C0008; `"prior authorization"` → C0001/C0004; demo mode ran all 3 smoke queries correctly). `02_tfidf_search.py` deleted in the "Replace TF-IDF keyword leg with BM25" commit.
 
-Same as phase 2a: **`next` / `what next` / `explain`** get **detailed line-by-line** teaching (what / why / pieces / memory picture). Few lines per turn. See [../BUILD_GUIDE.md](../BUILD_GUIDE.md).
+## Coaching
 
-## Planned script
+`next` / `explain` → detailed line-by-line. Few lines per turn.
 
-`scripts/04_hybrid_search.py` (name may vary) — reuse load/retrieve helpers; do not paste a whole file at once in chat.
+**Main-first:** after the first helper (e.g. `load_chunks`), add a thin `main()` early so we can run and **print** proofs while `retrieve` / argparse grow. See [../BUILD_GUIDE.md](../BUILD_GUIDE.md).
 
 ## Done when
 
-One CLI run prints merged ranks for `"What is step therapy?"` with stable `chunk_id`s from both legs.
+BM25 CLI works → RRF hybrid prints merged ids → Cohere rerank reorders the shortlist for `"What is step therapy?"`.

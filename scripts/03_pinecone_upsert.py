@@ -1,5 +1,11 @@
 """
-Embed policy chunks (Azure) and upsert vectors into Pinecone.
+Embed policy chunks (Azure OpenAI) and upsert / smoke-query Pinecone (dense hybrid leg).
+
+    python 03_pinecone_upsert.py
+
+Requires: scripts/01_chunk_corpus.py already run, and .env with Azure + Pinecone keys.
+Loads data/chunks/chunks.jsonl, embeds each chunk, upserts by chunk_id, then queries
+"What is step therapy?" and prints top matches.
 """
 
 from __future__ import annotations

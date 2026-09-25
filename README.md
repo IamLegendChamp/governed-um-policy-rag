@@ -12,10 +12,10 @@ This is a small **enterprise retrieval slice**—audit-ready metadata, reproduci
 |-------|--------|------|
 | Corpus | Synthetic UM policy `.txt` | Safe public sample (no PHI) |
 | Chunk catalog | JSONL + metadata | Stable `chunk_id` for citations |
-| Keyword retrieval | TF-IDF (scikit-learn) | Lexical baseline / hybrid leg |
+| Keyword retrieval | **BM25** | Lexical / keyword hybrid leg |
 | Embeddings | **Azure OpenAI** (`text-embedding-3-small`) | Dense representations |
 | Vector index | **Pinecone** | Upsert by `chunk_id` + similarity query |
-| Next | Hybrid merge → grounded answers | TF-IDF + Pinecone, then Azure chat + evals |
+| Next | Hybrid merge → grounded answers | **BM25** + Pinecone, then Azure chat + evals |
 
 Secrets stay in `.env` (see `.env.example`). Never commit keys.
 
@@ -24,9 +24,9 @@ Secrets stay in `.env` (see `.env.example`). Never commit keys.
 ```text
 Corpus (.txt)
     -> chunk + metadata (source, classification, doc_type, chunk_id)
-    -> keyword retriever  (TF-IDF)                 [shipped]
+    -> keyword retriever  (BM25) [shipped]
     -> dense index        (Azure embed -> Pinecone) [shipped]
-    -> hybrid merge                                 [next]
+    -> hybrid merge       (BM25 + Pinecone, RRF)    [next]
     -> grounded answer    (Azure chat + citations)
     -> audit log + LLM-as-a-Judge CI
 ```
@@ -34,18 +34,19 @@ Corpus (.txt)
 | Stage | Status |
 |-------|--------|
 | Ingest / provenance | Done |
-| Keyword leg (TF-IDF) | Done |
+| Keyword leg | **BM25 shipped** (CLI: `--query` / `--demo` / `--top-k`) |
 | Azure embeddings + Pinecone upsert/query | Done |
-| Hybrid fusion | Next |
+| Hybrid fusion | Next (BM25 + Pinecone via RRF) |
 | Grounded generation + judge CI | Planned |
 
 ## Implemented
 
 - [x] Synthetic UM policy corpus → chunk catalog with metadata  
 - [x] Stable `chunk_id`s for citation / audit  
-- [x] Ranked lexical retrieval CLI  
+- [x] **BM25** keyword CLI (enterprise lexical leg; `--query` / `--demo` / `--top-k`)  
 - [x] Azure embeddings → Pinecone upsert + smoke query  
-- [ ] Hybrid fusion (TF-IDF + Pinecone)  
+- [ ] Hybrid fusion (**BM25** + Pinecone via **RRF**)  
+- [ ] **Cohere rerank** on fused shortlist  
 - [ ] Azure answers with mandatory citations  
 - [ ] Retrieval audit JSONL + metadata filters  
 - [ ] Golden Q&A + judge threshold in CI  
@@ -59,7 +60,7 @@ pip install -r requirements.txt
 cp .env.example .env   # fill Azure + Pinecone values
 
 python scripts/01_chunk_corpus.py
-python scripts/02_tfidf_search.py --query "What is step therapy?"
+python scripts/02_bm25_search.py --query "What is step therapy?"
 python scripts/03_pinecone_upsert.py
 ```
 
