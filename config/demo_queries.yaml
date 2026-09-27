@@ -1,0 +1,8 @@
+# Operator smoke queries — utilization management policy
+queries:
+  - id: UM-step-therapy
+    text: "What is step therapy?"
+  - id: UM-prior-authorization
+    text: "When is prior authorization required for specialty medications?"
+  - id: UM-appeal-window
+    text: "How long do members have to appeal a medical necessity denial?"

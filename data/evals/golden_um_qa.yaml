@@ -1,0 +1,18 @@
+# Golden Q&A for LLM-as-a-Judge / CI (synthetic UM policy)
+version: "1.0"
+cases:
+  - id: UM-001
+    question: "What is step therapy?"
+    must_include_chunk_ids: []
+    must_include_doc_types: ["um_policy"]
+    rubric: "Answer must describe trial of preferred drugs before exceptions; no clinical diagnosis."
+
+  - id: UM-002
+    question: "How long do members have to appeal a medical necessity denial?"
+    must_include_doc_types: ["um_policy"]
+    rubric: "Must mention 60 calendar days for standard appeals; may mention expedited appeals."
+
+  - id: UM-003
+    question: "When is prior authorization required for specialty medications?"
+    must_include_doc_types: ["um_policy"]
+    rubric: "Must tie prior authorization to medical necessity / specialty meds; no invented clinical advice."
