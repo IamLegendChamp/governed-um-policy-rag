@@ -14,7 +14,9 @@ import argparse
 import importlib
 import os
 import cohere
+import re
 
+from openai import OpenAI
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -31,6 +33,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--query", "-q", type=str, required=True, help="Retrieval query.")
     parser.add_argument("--top-k", type=int, default=DEFAULT_TOP_K, help="Chunks per leg.")
+    parser.add_argument("--backend", choices=["cohere", "openai"], default="openai", help="Which chat backend to use for grounded generation.")
     return parser
 
 def combine_rrf(
@@ -51,6 +54,10 @@ def combine_rrf(
 def get_cohere_client() -> cohere.Client:
     api_key = pinecone_module.require_env("COHERE_API_KEY")
     return cohere.Client(api_key=api_key)
+
+def get_openai_client() -> "OpenAI":
+    api_key = pinecone_module.require_env("OPENAI_API_KEY")
+    return OpenAI(api_key=api_key)
 
 def main() -> None:
     args = build_parser().parse_args()
@@ -104,7 +111,30 @@ def main() -> None:
     chunk_ids = [chunk_id for chunk_id, score in rrf]
     final = [(chunk_ids[item.index], item.relevance_score) for item in rerank_result.results]
     print(f"final: {final}")
-    
+    chat_documents = [{ "id": chunk_id, "text": chunks_by_id[chunk_id]["text"]} for chunk_id, score in final]
+    print("chat_documents")
+    for doc in chat_documents:
+        print(f"id: {doc["id"]} text={doc["text"][:60]}")
+
+    if args.backend == "cohere":
+        chat_response = cohere_client.chat(message=args.query, documents=chat_documents, model="command-a-03-2025")
+        print(f"chat_response.text", chat_response.text)
+        print("chat_response.citations")
+        for citation in chat_response.citations:
+            print(f"  text={citation.text!r} document_ids={citation.document_ids}")
+    else: 
+        context_block = "\n\n".join(f"[{doc['id']}] {doc['text']}" for doc in chat_documents)
+        system_prompt = "Answer only using the provided documents. After each sentence, cite the document id(s) it came from in square brackets, like [C0002]. If the documents don't contain the answer, say so."                                                                                                                   
+        open_ai_client = get_openai_client()
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": f"{context_block}\n\nQuestion: {args.query}"}
+        ]
+        openai_response = open_ai_client.chat.completions.create(model="gpt-5.6-luna", messages=messages)
+        print(f"openai_response.choices[0].message.content: ", openai_response.choices[0].message.content)
+        openai_citations = re.findall(r"\[(C\d+)\]", openai_response.choices[0].message.content)
+        print(f"openai_citations", openai_citations)
+
 
 if __name__ == "__main__":
     main()

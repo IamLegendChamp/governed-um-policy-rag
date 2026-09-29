@@ -15,7 +15,8 @@ This is a small **enterprise retrieval slice**—audit-ready metadata, reproduci
 | Keyword retrieval | **BM25** | Lexical / keyword hybrid leg |
 | Embeddings | **Azure OpenAI** (`text-embedding-3-small`) | Dense representations |
 | Vector index | **Pinecone** | Upsert by `chunk_id` + similarity query |
-| Next | Hybrid merge → grounded answers | **BM25** + Pinecone, then Azure chat + evals |
+| Generation | **Cohere / OpenAI** (`--backend` flag) | Grounded answer with mandatory source citations |
+| Next | Access control, GraphRAG leg, audit + evals | Platform-agnostic |
 
 Secrets stay in `.env` (see `.env.example`). Never commit keys.
 
@@ -28,8 +29,10 @@ Corpus (.txt)
     -> dense index        (Azure embed -> Pinecone) [shipped]
     -> hybrid merge       (BM25 + Pinecone, RRF)    [shipped]
     -> rerank             (Cohere rerank-v3.5)      [shipped]
-    -> grounded answer    (Azure chat + citations)  [next]
-    -> audit log + LLM-as-a-Judge CI
+    -> grounded answer    (Cohere/OpenAI + citations, --backend flag) [shipped]
+    -> access control     (--role flag, chunk filtering)  [next]
+    -> GraphRAG leg       (--use-graph, toggleable 3rd retrieval leg) [next]
+    -> audit log + LLM-as-a-Judge CI [next]
 ```
 
 | Stage | Status |
@@ -39,7 +42,10 @@ Corpus (.txt)
 | Azure embeddings + Pinecone upsert/query | Done |
 | Hybrid fusion | **RRF merge shipped** (`04_hybrid_search.py`) |
 | Cohere rerank | **Shipped** (`04_hybrid_search.py`, `rerank-v3.5`) |
-| Grounded generation + judge CI | Planned |
+| Grounded generation + citations | **Shipped** — dual backend (Cohere native citations + OpenAI manual citation parsing), `--backend {cohere,openai}` flag |
+| Role-based access control | Planned (`--role` flag) |
+| GraphRAG toggle leg | Planned (`--use-graph` flag) |
+| Audit log + judge CI | Planned |
 
 ## Implemented
 
@@ -49,11 +55,15 @@ Corpus (.txt)
 - [x] Azure embeddings → Pinecone upsert + smoke query  
 - [x] Hybrid fusion (**BM25** + Pinecone via **RRF**; `04_hybrid_search.py`)  
 - [x] **Cohere rerank** on fused shortlist (`rerank-v3.5`, `04_hybrid_search.py`)  
-- [ ] Azure answers with mandatory citations  
+- [x] Grounded generation with mandatory citations — **dual backend** (Cohere native `.citations` + OpenAI manual citation-tag parsing), selectable via `--backend {cohere,openai}`  
+- [ ] Role-based access control (`--role` flag + chunk filtering)  
+- [ ] GraphRAG toggle leg (`--use-graph`, 3rd retrieval leg over policy cross-references)  
 - [ ] Retrieval audit JSONL + metadata filters  
 - [ ] Golden Q&A + judge threshold in CI  
 
-**Progress: 6/9 checklist items done → ~67%**
+**Progress: 7/11 checklist items done → ~64%**
+
+*(Note: this % is lower than an earlier snapshot despite real progress — the denominator honestly grew when access control + GraphRAG were added to scope, rather than being padded to keep the percentage looking static.)*
 
 ## Run locally
 
@@ -61,19 +71,22 @@ Corpus (.txt)
 python -m venv .venv
 # Windows Git Bash: source .venv/Scripts/activate
 pip install -r requirements.txt
-cp .env.example .env   # fill Azure + Pinecone + Cohere values
+cp .env.example .env   # fill Azure + Pinecone + Cohere + OpenAI values
 
 python scripts/01_chunk_corpus.py
 python scripts/02_bm25_search.py --query "What is step therapy?"
 python scripts/03_pinecone_upsert.py
 python scripts/04_hybrid_search.py --query "What is step therapy?"
+python scripts/04_hybrid_search.py --query "What is step therapy?" --backend cohere
 ```
 
 `03` embeds all chunks, upserts to Pinecone, then queries `"What is step therapy?"` and prints top `chunk_id`s.
 
-`04` runs the BM25 leg and the Pinecone leg for the same query, fuses both rankings via Reciprocal Rank Fusion (RRF), then reranks the fused shortlist with Cohere (`rerank-v3.5`) and prints the final reranked `chunk_id`s with relevance scores. Sample real output for `"What is step therapy?"`:
+`04` runs the BM25 leg and the Pinecone leg for the same query, fuses both rankings via Reciprocal Rank Fusion (RRF), reranks the fused shortlist with Cohere (`rerank-v3.5`), then generates a grounded answer with citations via either backend (`--backend openai`, the default, or `--backend cohere`) — only one generation API call happens per run. Sample real output for `"What is step therapy?"`:
 ```text
 final: [('C0002', 0.598), ('C0001', 0.290), ('C0004', 0.016)]
+openai_response.choices[0].message.content: Step therapy requires a trial of formulary-preferred alternative medications for a defined period before coverage of another medication, unless an exception applies. [C0002]
+openai_citations ['C0002']
 ```
 
 Fresh clone: `data/chunks/` is not committed—run `01` before retrieval.
