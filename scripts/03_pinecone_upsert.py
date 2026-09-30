@@ -19,7 +19,7 @@ import os
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 CHUNKS_PATH = PROJECT_DIR / "data" / "chunks" / "chunks.jsonl"
 
-load_dotenv(PROJECT_DIR / ".env")
+load_dotenv(PROJECT_DIR / ".env", override=True)
 
 def load_chunks(path: Path) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []

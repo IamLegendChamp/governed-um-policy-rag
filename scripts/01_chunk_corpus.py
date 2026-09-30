@@ -103,6 +103,7 @@ def main() -> None:
                 **meta,
             }
             all_rows.append(row)
+            print(f"    [{row['chunk_id']}] allowed_roles={row['allowed_roles']}")
             if i < PREVIEW_CHUNKS_PER_DOC:
                 print(f"    [{row['chunk_id']}] {piece[:90]}...")
             chunk_id += 1

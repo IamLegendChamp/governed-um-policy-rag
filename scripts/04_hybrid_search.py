@@ -63,9 +63,9 @@ def get_openai_client() -> "OpenAI":
 def main() -> None:
     args = build_parser().parse_args()
     chunks = bm25_module.load_chunks(CHUNKS_PATH)
-    chunks = [row for row in chunks if args.role in row["allowed_roles"]]
     print(f"Loaded {len(chunks)} chunks from {CHUNKS_PATH}")
-
+    chunks = [row for row in chunks if args.role in row["allowed_roles"]]
+    print(f"Role={args.role} -> {len(chunks)} chunks visible: {[row['chunk_id'] for row in chunks]}")
     bm25_hits = bm25_module.retrieve(args.query, chunks, top_k=args.top_k)
     print(f"Query: {args.query}")
     print("--- BM25 leg ---")
@@ -85,6 +85,7 @@ def main() -> None:
 
     query_vector = pinecone_module.embed_text(client, deployment, args.query)
     index = pinecone_module.get_pinecone_index()
+    print(f"Pinecone filter sent: {{'allowed_roles': {{'$in': ['{args.role}']}}}}")
     result = index.query(vector=query_vector, top_k=args.top_k, include_metadata=True, filter={"allowed_roles": {"$in": [args.role]}})
 
     print("--- Pinecone leg ---")

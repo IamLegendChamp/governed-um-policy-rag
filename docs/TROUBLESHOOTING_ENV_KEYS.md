@@ -1,58 +1,51 @@
-# Troubleshooting: "Incorrect API key provided" despite a correct `.env`
+# Troubleshooting: "Incorrect API key provided" despite a correct project `.env`
 
 ## Symptom
 
 `openai.AuthenticationError: Error code: 401 - Incorrect API key provided: replace-************-key`
 
-...even though `.env` has been checked, confirmed correct, and re-saved multiple times.
-Restarting the Cursor/IDE window does **not** fix it.
+The project `.env` has the real key, but the placeholder is what gets sent.
+Restarting Cursor, and even opening a brand-new terminal, does **not** fix it.
 
 ## Root cause
 
-`python-dotenv`'s `load_dotenv()` **does not override variables that already exist
-in the process environment** (`os.environ`) unless called with `override=True`.
+Two things combine:
 
-If a shell session ever ran `export OPENAI_API_KEY=<placeholder>` (manually, or via
-an earlier setup step), that exported value lives for the **entire lifetime of that
-shell process** — it is not tied to the `.env` file, not tied to any `.bashrc` /
-`.bash_profile` / Windows User or Machine environment variable, and is invisible to
-`grep`-ing config files or checking `[Environment]::GetEnvironmentVariable(...)` at
-the OS level. Every script run from that same terminal tab will keep using the
-stale exported value, silently ignoring whatever the current `.env` file says.
+1. **A second `.env` exists at the workspace root** (`AgentForge/.env`) containing a
+   placeholder `OPENAI_API_KEY=replace-me-with-your-key`. The editor loads the
+   workspace-root `.env` into every terminal it opens, so the placeholder is already in
+   `os.environ` before Python starts.
+2. **`python-dotenv`'s `load_dotenv()` does not override existing environment
+   variables by default.** The project `.env` (with the real key) is read, but the
+   already-present placeholder wins.
 
-This is **not** a Windows problem and **not** fixed by restarting Cursor — restarting
-the editor does not necessarily kill an already-open integrated terminal's shell
-process, and even a full IDE restart only helps if it happens to also close that
-terminal.
+`unset OPENAI_API_KEY` only helps the one terminal it is typed in; the next new terminal
+gets the placeholder again (this is why the earlier "fix" stopped working after a few hours).
 
-## How to confirm this is the cause
+## How to confirm
 
-In the *same terminal* that is failing, run (safe — does not print the secret):
+In the failing terminal (prints a length only, not the secret):
 
 ```bash
-echo "shell-exported OPENAI_API_KEY length: ${#OPENAI_API_KEY}"
+echo "shell OPENAI_API_KEY length: ${#OPENAI_API_KEY}"
 ```
 
-If this prints a short/unexpected length (e.g. `24`) instead of `0` or the real
-key's length, the shell has a stale exported value overriding `.env`.
+A short length (e.g. `24`) means a placeholder was injected before Python started.
+Then look for the source: `find . -maxdepth 3 -name ".env*"` and check the workspace root.
 
-## The fix
+## Permanent fix
 
-In that terminal:
+In `scripts/03_pinecone_upsert.py`, make the project `.env` authoritative:
 
-```bash
-unset OPENAI_API_KEY
+```python
+load_dotenv(PROJECT_DIR / ".env", override=True)
 ```
 
-Then re-run the script. `load_dotenv()` will now correctly load the real value from
-`.env` since nothing in `os.environ` is blocking it anymore.
-
-Alternatively: open a **brand new terminal tab** — a fresh shell process never picked
-up the stale manual export in the first place.
+`04_hybrid_search.py` imports `03_pinecone_upsert`, so this covers both scripts.
 
 ## Prevention
 
-- Never manually `export` real or placeholder secrets into an interactive shell for
-  "quick testing" — always go through `.env` + `load_dotenv()`.
-- If in doubt after editing `.env`, `unset <VAR>` first, or open a new terminal,
-  before re-running.
+- Keep placeholder-only values out of any `.env` that the editor auto-loads into
+  terminals (comment them out in the workspace-root `.env`).
+- For each project, load its own `.env` with `override=True` so project config wins.
+- Never `export` secrets manually in a shell for quick tests.

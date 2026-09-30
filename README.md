@@ -59,7 +59,7 @@ Corpus (.txt)
 - [x] Role-based access control — `allowed_roles` on every chunk (data layer), `--role {adjuster,member}` CLI flag, filtered before BM25, before Pinecone (native metadata `filter`), and before generation; verified end-to-end (a `member` query for restricted audit-log content correctly returns "documents don't specify" rather than leaking it)  
 - [ ] GraphRAG toggle leg (`--use-graph`, 3rd retrieval leg over policy cross-references)  
 - [ ] Retrieval audit JSONL + metadata filters  
-- [ ] Golden Q&A + judge threshold in CI  
+- [ ] Golden Q&A + recall@k + DeepEval G-Eval judge threshold in CI (run per role)  
 
 **Progress: 8/11 checklist items done → ~73%**
 
