@@ -30,7 +30,7 @@ Corpus (.txt)
     -> hybrid merge       (BM25 + Pinecone, RRF)    [shipped]
     -> rerank             (Cohere rerank-v3.5)      [shipped]
     -> grounded answer    (Cohere/OpenAI + citations, --backend flag) [shipped]
-    -> access control     (--role flag, chunk filtering)  [next]
+    -> access control     (--role flag, chunk filtering, both retrieval legs) [shipped]
     -> GraphRAG leg       (--use-graph, toggleable 3rd retrieval leg) [next]
     -> audit log + LLM-as-a-Judge CI [next]
 ```
@@ -43,7 +43,7 @@ Corpus (.txt)
 | Hybrid fusion | **RRF merge shipped** (`04_hybrid_search.py`) |
 | Cohere rerank | **Shipped** (`04_hybrid_search.py`, `rerank-v3.5`) |
 | Grounded generation + citations | **Shipped** — dual backend (Cohere native citations + OpenAI manual citation parsing), `--backend {cohere,openai}` flag |
-| Role-based access control | Planned (`--role` flag) |
+| Role-based access control | **Shipped** — `--role {adjuster,member}` flag; chunk-level `allowed_roles` filter applied before BM25, before Pinecone (native metadata `filter`), and before generation |
 | GraphRAG toggle leg | Planned (`--use-graph` flag) |
 | Audit log + judge CI | Planned |
 
@@ -56,14 +56,12 @@ Corpus (.txt)
 - [x] Hybrid fusion (**BM25** + Pinecone via **RRF**; `04_hybrid_search.py`)  
 - [x] **Cohere rerank** on fused shortlist (`rerank-v3.5`, `04_hybrid_search.py`)  
 - [x] Grounded generation with mandatory citations — **dual backend** (Cohere native `.citations` + OpenAI manual citation-tag parsing), selectable via `--backend {cohere,openai}`  
-- [ ] Role-based access control (`--role` flag + chunk filtering)  
+- [x] Role-based access control — `allowed_roles` on every chunk (data layer), `--role {adjuster,member}` CLI flag, filtered before BM25, before Pinecone (native metadata `filter`), and before generation; verified end-to-end (a `member` query for restricted audit-log content correctly returns "documents don't specify" rather than leaking it)  
 - [ ] GraphRAG toggle leg (`--use-graph`, 3rd retrieval leg over policy cross-references)  
 - [ ] Retrieval audit JSONL + metadata filters  
 - [ ] Golden Q&A + judge threshold in CI  
 
-**Progress: 7/11 checklist items done → ~64%**
-
-*(Note: this % is lower than an earlier snapshot despite real progress — the denominator honestly grew when access control + GraphRAG were added to scope, rather than being padded to keep the percentage looking static.)*
+**Progress: 8/11 checklist items done → ~73%**
 
 ## Run locally
 
@@ -88,6 +86,15 @@ final: [('C0002', 0.598), ('C0001', 0.290), ('C0004', 0.016)]
 openai_response.choices[0].message.content: Step therapy requires a trial of formulary-preferred alternative medications for a defined period before coverage of another medication, unless an exception applies. [C0002]
 openai_citations ['C0002']
 ```
+
+Access control example — same pipeline, `--role member` querying content that only exists in adjuster-only chunks:
+```text
+python scripts/04_hybrid_search.py --query "How are retrieval logs and audit records handled?" --role member --backend openai
+Loaded 7 chunks ...           # 2 adjuster-only chunks excluded before BM25/Pinecone even run
+final: [('C0008', 0.028), ('C0000', 0.012), ('C0002', 0.009)]
+openai_response.choices[0].message.content: The provided documents do not specify how retrieval logs and audit records are handled. [C0000][C0002][C0008]
+```
+No leakage: the restricted chunks are filtered out of the local `chunks` list *and* excluded from Pinecone at query time via a native metadata `filter`, so they're never scored, retrieved, reranked, or seen by the LLM.
 
 Fresh clone: `data/chunks/` is not committed—run `01` before retrieval.
 

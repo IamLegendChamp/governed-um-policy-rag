@@ -34,6 +34,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--query", "-q", type=str, required=True, help="Retrieval query.")
     parser.add_argument("--top-k", type=int, default=DEFAULT_TOP_K, help="Chunks per leg.")
     parser.add_argument("--backend", choices=["cohere", "openai"], default="openai", help="Which chat backend to use for grounded generation.")
+    parser.add_argument("--role", choices=["adjuster", "member"], default="adjuster", help="Caller's role for access filtering.")
     return parser
 
 def combine_rrf(
@@ -62,6 +63,7 @@ def get_openai_client() -> "OpenAI":
 def main() -> None:
     args = build_parser().parse_args()
     chunks = bm25_module.load_chunks(CHUNKS_PATH)
+    chunks = [row for row in chunks if args.role in row["allowed_roles"]]
     print(f"Loaded {len(chunks)} chunks from {CHUNKS_PATH}")
 
     bm25_hits = bm25_module.retrieve(args.query, chunks, top_k=args.top_k)
@@ -83,7 +85,7 @@ def main() -> None:
 
     query_vector = pinecone_module.embed_text(client, deployment, args.query)
     index = pinecone_module.get_pinecone_index()
-    result = index.query(vector=query_vector, top_k=args.top_k, include_metadata=True)
+    result = index.query(vector=query_vector, top_k=args.top_k, include_metadata=True, filter={"allowed_roles": {"$in": [args.role]}})
 
     print("--- Pinecone leg ---")
     for rank, match in enumerate(result.matches, start=1):
@@ -135,6 +137,7 @@ def main() -> None:
         openai_citations = re.findall(r"\[(C\d+)\]", openai_response.choices[0].message.content)
         print(f"openai_citations", openai_citations)
 
+    
 
 if __name__ == "__main__":
     main()

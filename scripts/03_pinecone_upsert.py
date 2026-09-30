@@ -79,7 +79,8 @@ def main() -> None:
                 "metadata": {
                     "source": row["source"],
                     "doc_type": row.get("doc_type", "unknown"),
-                    "classification": row.get("classification", "internal")
+                    "classification": row.get("classification", "internal"),
+                    "allowed_roles": row.get("allowed_roles", ["adjuster", "member"])
                 },
             }
         )

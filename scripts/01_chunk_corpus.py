@@ -57,6 +57,12 @@ def chunk_text(text: str, chunk_size: int, overlap: int) -> list[str]:
         start = end - overlap
     return chunks
 
+def infer_allowed_roles(piece: str) -> list[str]:
+    internal_keywords = ["Audit and retrieval", "Metadata for production"]
+    is_internal = any(keyword in piece for keyword in internal_keywords)
+    if is_internal:
+        return ["adjuster"]
+    return ["adjuster", "member"]
 
 def save_chunks_jsonl(rows: list[dict[str, str]], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -93,6 +99,7 @@ def main() -> None:
                 "chunk_id": f"C{chunk_id:04d}",
                 "source": source,
                 "text": piece,
+                "allowed_roles": infer_allowed_roles(piece),
                 **meta,
             }
             all_rows.append(row)
