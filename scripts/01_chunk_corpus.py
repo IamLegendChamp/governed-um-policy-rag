@@ -26,13 +26,6 @@ DOC_CATALOG: dict[str, dict[str, str]] = {
 }
 
 
-def banner(title: str) -> None:
-    print()
-    print("=" * 60)
-    print(title)
-    print("=" * 60)
-
-
 def read_text_files(folder: Path) -> list[tuple[str, str]]:
     documents: list[tuple[str, str]] = []
     for path in sorted(folder.glob("*.txt")):
@@ -72,29 +65,19 @@ def save_chunks_jsonl(rows: list[dict[str, str]], path: Path) -> None:
 
 
 def main() -> None:
-    banner("governed-um-policy-rag — chunk corpus")
-    print(f"Corpus folder : {CORPUS_DIR}")
-    print(f"Output file   : {CHUNKS_PATH}")
-
     documents = read_text_files(CORPUS_DIR)
     if not documents:
         raise SystemExit(f"No .txt files in {CORPUS_DIR}")
 
-    banner("Step 1 - Documents found")
-    for name, text in documents:
-        print(f" • {name} ({len(text)} characters)")
-
     all_rows: list[dict[str, str]] = []
     chunk_id = 0
-    banner("Step 2 - Chunking (preview)")
     for source, text in documents:
         pieces = chunk_text(text, CHUNK_SIZE, CHUNK_OVERLAP)
         meta = DOC_CATALOG.get(
             source,
             {"industry": "health", "classification": "internal", "doc_type": "unknown"},
         )
-        print(f"\n--- {source} -> {len(pieces)} chunks ---")
-        for i, piece in enumerate(pieces):
+        for piece in pieces:
             row = {
                 "chunk_id": f"C{chunk_id:04d}",
                 "source": source,
@@ -103,20 +86,10 @@ def main() -> None:
                 **meta,
             }
             all_rows.append(row)
-            print(f"    [{row['chunk_id']}] allowed_roles={row['allowed_roles']}")
-            if i < PREVIEW_CHUNKS_PER_DOC:
-                print(f"    [{row['chunk_id']}] {piece[:90]}...")
             chunk_id += 1
-        if len(pieces) > PREVIEW_CHUNKS_PER_DOC:
-            hidden = len(pieces) - PREVIEW_CHUNKS_PER_DOC
-            print(f"    ... +{hidden} more chunks (see chunks.jsonl)")
 
     save_chunks_jsonl(all_rows, CHUNKS_PATH)
-    banner("Step 3 — Saved")
-    print(f"Total chunks written: {len(all_rows)}")
-    print(f"Open in editor: {CHUNKS_PATH}")
-    banner("Step 4 — Sample record")
-    print(json.dumps(all_rows[0], indent=2, ensure_ascii=False))
+    print(f"Wrote {len(all_rows)} chunks from {len(documents)} documents to {CHUNKS_PATH}")
 
 
 if __name__ == "__main__":

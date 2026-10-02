@@ -70,8 +70,6 @@ def main() -> None:
 
     chunks = load_chunks(CHUNKS_PATH)
     print(f"Loaded {len(chunks)} from {CHUNKS_PATH}")
-    print(f"First chunk_id={chunks[0]['chunk_id']}")
-
     if args.demo:
         for item in load_demo_queries(DEMO_QUERIES_PATH):
             hits = retrieve(item["text"], chunks, top_k=args.top_k)

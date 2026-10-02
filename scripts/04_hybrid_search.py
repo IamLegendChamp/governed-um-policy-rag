@@ -63,9 +63,7 @@ def get_openai_client() -> "OpenAI":
 def main() -> None:
     args = build_parser().parse_args()
     chunks = bm25_module.load_chunks(CHUNKS_PATH)
-    print(f"Loaded {len(chunks)} chunks from {CHUNKS_PATH}")
     chunks = [row for row in chunks if args.role in row["allowed_roles"]]
-    print(f"Role={args.role} -> {len(chunks)} chunks visible: {[row['chunk_id'] for row in chunks]}")
     bm25_hits = bm25_module.retrieve(args.query, chunks, top_k=args.top_k)
     print(f"Query: {args.query}")
     print("--- BM25 leg ---")
@@ -85,44 +83,34 @@ def main() -> None:
 
     query_vector = pinecone_module.embed_text(client, deployment, args.query)
     index = pinecone_module.get_pinecone_index()
-    print(f"Pinecone filter sent: {{'allowed_roles': {{'$in': ['{args.role}']}}}}")
     result = index.query(vector=query_vector, top_k=args.top_k, include_metadata=True, filter={"allowed_roles": {"$in": [args.role]}})
 
     print("--- Pinecone leg ---")
     for rank, match in enumerate(result.matches, start=1):
         print(f"{rank}. score={match.score:.3f} chunk_id={match.id}")
     rrf = combine_rrf(bm25_hits, result.matches)
-    print(f"rrf = {rrf}")
 
     cohere_client = get_cohere_client()
     chunks_by_id = {row["chunk_id"]: row for row in chunks}
-    print(f"chunk_by_id keys = {list(chunks_by_id.keys())}")
     documents = [chunks_by_id[chunk_id]["text"] for chunk_id, score in rrf]
-    print(f"documents")
-    for doc in documents:
-        print(f"  - {doc}\n")
     rerank_result = cohere_client.rerank(
         query=args.query,
         documents=documents,
         model="rerank-v3.5",
         top_n=len(documents)
     )
-    # print(f"rerank_result = ", rerank_result)
-    print(f"rerank_result.results: ")
+    print("--- Reranked ---")
     for item in rerank_result.results:
-        print(f"  index={item.index} relevance_score={item.relevance_score:.4f}")
+        print(f"  chunk_id={[chunk_id for chunk_id, _ in rrf][item.index]} relevance_score={item.relevance_score:.4f}")
     chunk_ids = [chunk_id for chunk_id, score in rrf]
     final = [(chunk_ids[item.index], item.relevance_score) for item in rerank_result.results]
-    print(f"final: {final}")
     chat_documents = [{ "id": chunk_id, "text": chunks_by_id[chunk_id]["text"]} for chunk_id, score in final]
-    print("chat_documents")
-    for doc in chat_documents:
-        print(f"id: {doc["id"]} text={doc["text"][:60]}")
 
     if args.backend == "cohere":
         chat_response = cohere_client.chat(message=args.query, documents=chat_documents, model="command-a-03-2025")
-        print(f"chat_response.text", chat_response.text)
-        print("chat_response.citations")
+        print("--- Answer ---")
+        print(chat_response.text)
+        print("--- Citations ---")
         for citation in chat_response.citations:
             print(f"  text={citation.text!r} document_ids={citation.document_ids}")
     else: 
@@ -134,9 +122,12 @@ def main() -> None:
             {"role": "user", "content": f"{context_block}\n\nQuestion: {args.query}"}
         ]
         openai_response = open_ai_client.chat.completions.create(model="gpt-5.6-luna", messages=messages)
-        print(f"openai_response.choices[0].message.content: ", openai_response.choices[0].message.content)
-        openai_citations = re.findall(r"\[(C\d+)\]", openai_response.choices[0].message.content)
-        print(f"openai_citations", openai_citations)
+        answer = openai_response.choices[0].message.content
+        print("--- Answer ---")
+        print(answer)
+        openai_citations = re.findall(r"\[(C\d+)\]", answer)
+        print("--- Citations ---")
+        print(", ".join(openai_citations))
 
     
 

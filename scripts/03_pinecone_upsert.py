@@ -64,10 +64,8 @@ def main() -> None:
 
     sample = chunks[0]
     vector = embed_text(client, deployment, sample["text"])
-    print(f"Sample embed ok: chunk_id={sample['chunk_id']} dim={len(vector)}")
 
     index = get_pinecone_index()
-    print(f"Pinecone index open: {require_env('PINECONE_INDEX_NAME')}")
 
     records: list[dict] = []
     for row in chunks:
