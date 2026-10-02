@@ -57,11 +57,19 @@ Corpus (.txt)
 - [x] **Cohere rerank** on fused shortlist (`rerank-v3.5`, `04_hybrid_search.py`)  
 - [x] Grounded generation with mandatory citations — **dual backend** (Cohere native `.citations` + OpenAI manual citation-tag parsing), selectable via `--backend {cohere,openai}`  
 - [x] Role-based access control — `allowed_roles` on every chunk (data layer), `--role {adjuster,member}` CLI flag, filtered before BM25, before Pinecone (native metadata `filter`), and before generation; verified end-to-end (a `member` query for restricted audit-log content correctly returns "documents don't specify" rather than leaking it)  
-- [ ] GraphRAG toggle leg (`--use-graph`, 3rd retrieval leg over policy cross-references)  
+- [ ] GraphRAG toggle leg (`--use-graph`, 3rd retrieval leg over policy cross-references). Build order: (1) NetworkX mechanics by hand (nodes, edges, neighbors) -> (2) hand-picked `CONCEPTS` loop over real chunks -> (3) Pydantic schema + Azure OpenAI structured-output extraction, run once at index time, saved to `data/graph/graph.json`, human-reviewed, `chunk_ids` kept on every node -> (4) graph leg feeds RRF, with the role filter applied to the graph leg too. No extra graph library  
 - [ ] Retrieval audit JSONL + metadata filters  
 - [ ] Golden Q&A + recall@k + DeepEval G-Eval judge threshold in CI (run per role)  
+- [ ] **Production packaging, part 1:** `pyproject.toml` + lock file (uv) replacing `requirements.txt`  
+- [ ] **Production packaging, part 2:** `Dockerfile` (multi-stage, non-root, secrets passed at run time, never baked into the image) + `compose.yaml`  
+- [ ] **Production packaging, part 3:** GitHub Actions workflow YAML that runs the eval gate on every push and fails the build if scores drop  
+- [ ] **Dependency supply-chain controls:** installs from the lock only (`uv sync --locked`, also in the Docker build), `uv audit` in the CI workflow, `.github/dependabot.yml` for `uv` and GitHub Actions; the managed-registry variant (Azure Artifacts) written up in `docs/adr/`. The local devpi mirror is built in the Docker-Compose project (P02)  
+- [ ] **Logging:** replace `print` in the scripts with standard-library `logging` configured once in a shared helper (level from config, one timestamped format); modules use `logging.getLogger(__name__)`; command-line result output may stay as output, diagnostics go to logs; no secrets or raw personal data in log lines  
+- [ ] **Eval analysis notebook (small):** `notebooks/eval_analysis.ipynb` loads the golden-set results and shows per-question recall@k, rerank scores and failures (which chunk was missed and why). Analysis only; the CI eval gate stays a script. Outputs cleared before commit  
+- [ ] **Architecture + mentoring docs:** `docs/adr/` with 3-5 short Architecture Decision Records (seed: plain Python before a framework; BM25 + dense + RRF vs dense only; Cohere rerank; role filter on both legs) and `docs/ONBOARDING.md` (clone, configure, run, break something on purpose, fix it)  
 
-**Progress: 8/11 checklist items done → ~73%**
+**Status:** development paused; the open items above remain on the roadmap.  
+**Progress: 8/18 checklist items done → 44%**
 
 ## Run locally
 
