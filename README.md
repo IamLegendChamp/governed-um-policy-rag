@@ -71,6 +71,13 @@ Corpus (.txt)
 **Status:** development paused; the open items above remain on the roadmap.  
 **Progress: 8/18 checklist items done → 44%**
 
+## Optional exercises (not counted in progress)
+
+Healthcare and life sciences (HCLS) extensions, to do after the core checklist if wanted. All use synthetic data only and call paid cloud services, so run them with a budget alert in place.
+
+- [ ] **Speech intake (Azure Speech, speech-to-text):** transcribe a short synthetic recording of a member question, pass the transcript into the existing hybrid search, and log the word error rate on a small scripted set. Redact spoken identifiers (member id, phone number) from the transcript before it is logged or searched.- [ ] **Managed PII/PHI detection comparison:** run the same synthetic chunks and queries through a managed PII-detection service (Azure AI Language is the candidate; capabilities to be verified at build time) and compare its detections with the project's own role filter and redaction rules. Record what each catches and misses.
+- [ ] **HCLS write-up:** a one-page note on how the same pipeline maps to healthcare and life-sciences use cases (utilization management, claims, clinical documentation), and which controls (access roles, redaction, audit log, citation checks) each use case needs.
+
 ## Run locally
 
 ```bash
